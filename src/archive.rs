@@ -1203,10 +1203,11 @@ impl<R: Read + Unpin> SparseState<R> {
                     Ok(block) => block,
                     Err(err) => return Poll::Ready(Err(err)),
                 };
-                if let Some((offset, length)) = block
-                    && let Err(err) = self.add_block(offset, length)
-                {
-                    return Poll::Ready(Err(err));
+                #[allow(clippy::collapsible_if)]
+                if let Some((offset, length)) = block {
+                    if let Err(err) = self.add_block(offset, length) {
+                        return Poll::Ready(Err(err));
+                    }
                 }
             }
             self.needs_continuation = self.continuation.is_extended();
@@ -1234,8 +1235,9 @@ impl<R: Read + Unpin> SparseState<R> {
         Poll::Ready(Ok(()))
     }
 
+    #[allow(clippy::manual_is_multiple_of)]
     fn add_block(&mut self, offset: u64, length: u64) -> io::Result<()> {
-        if length != 0 && !(self.entry.size - self.remaining).is_multiple_of(BLOCK_SIZE) {
+        if length != 0 && (self.entry.size - self.remaining) % BLOCK_SIZE != 0 {
             return Err(other(
                 "previous block in sparse file was not \
                  aligned to 512-byte boundary",

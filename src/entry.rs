@@ -762,10 +762,11 @@ impl<R: Read + Unpin> EntryFields<R> {
 
         if kind.is_dir() {
             self.unpack_dir(dst).await?;
-            if self.preserve_permissions
-                && let Ok(mode) = self.header.mode()
-            {
-                set_perms(dst, None, mode).await?;
+            #[allow(clippy::collapsible_if)]
+            if self.preserve_permissions {
+                if let Ok(mode) = self.header.mode() {
+                    set_perms(dst, None, mode).await?;
+                }
             }
             return Ok(Unpacked::Other);
         } else if kind.is_hard_link() || kind.is_symlink() {
@@ -876,12 +877,13 @@ impl<R: Read + Unpin> EntryFields<R> {
                         }
                     }
                 }?;
-                if self.preserve_mtime
-                    && let Some(mtime) = get_mtime(&self.header)?
-                {
-                    set_symlink_file_times(dst, mtime).map_err(|e| {
-                        TarError::new(format!("failed to set mtime for `{}`", dst.display()), e)
-                    })?;
+                #[allow(clippy::collapsible_if)]
+                if self.preserve_mtime {
+                    if let Some(mtime) = get_mtime(&self.header)? {
+                        set_symlink_file_times(dst, mtime).map_err(|e| {
+                            TarError::new(format!("failed to set mtime for `{}`", dst.display()), e)
+                        })?;
+                    }
                 }
             };
             return Ok(Unpacked::Other);
@@ -917,10 +919,11 @@ impl<R: Read + Unpin> EntryFields<R> {
         // Only applies to old headers.
         if self.header.as_ustar().is_none() && self.path_bytes()?.ends_with(b"/") {
             self.unpack_dir(dst).await?;
-            if self.preserve_permissions
-                && let Ok(mode) = self.header.mode()
-            {
-                set_perms(dst, None, mode).await?;
+            #[allow(clippy::collapsible_if)]
+            if self.preserve_permissions {
+                if let Ok(mode) = self.header.mode() {
+                    set_perms(dst, None, mode).await?;
+                }
             }
             return Ok(Unpacked::Other);
         }
@@ -997,19 +1000,21 @@ impl<R: Read + Unpin> EntryFields<R> {
             )
         })?;
 
-        if self.preserve_mtime
-            && let Some(mtime) = get_mtime(&self.header)?
-        {
-            let file = f.into_std().await;
-            set_file_times(&file, mtime).map_err(|e| {
-                TarError::new(format!("failed to set mtime for `{}`", dst.display()), e)
-            })?;
-            f = fs::File::from_std(file);
+        #[allow(clippy::collapsible_if)]
+        if self.preserve_mtime {
+            if let Some(mtime) = get_mtime(&self.header)? {
+                let file = f.into_std().await;
+                set_file_times(&file, mtime).map_err(|e| {
+                    TarError::new(format!("failed to set mtime for `{}`", dst.display()), e)
+                })?;
+                f = fs::File::from_std(file);
+            }
         }
-        if self.preserve_permissions
-            && let Ok(mode) = self.header.mode()
-        {
-            set_perms(dst, Some(&mut f), mode).await?;
+        #[allow(clippy::collapsible_if)]
+        if self.preserve_permissions {
+            if let Ok(mode) = self.header.mode() {
+                set_perms(dst, Some(&mut f), mode).await?;
+            }
         }
         if self.unpack_xattrs {
             set_xattrs(self, dst).await?;

@@ -1543,10 +1543,11 @@ fn copy_path_into_inner(
         if needs_slash {
             copy(&mut slot, b"/")?;
         }
-        if bytes.contains(&b'/')
-            && let Component::Normal(..) = component
-        {
-            return Err(other("path component in archive cannot contain `/`"));
+        #[allow(clippy::collapsible_if)]
+        if bytes.contains(&b'/') {
+            if let Component::Normal(..) = component {
+                return Err(other("path component in archive cannot contain `/`"));
+            }
         }
         copy(&mut slot, &bytes)?;
         if &*bytes != b"/" {

@@ -717,10 +717,11 @@ async fn append_dir_all<Dst: Write + Unpin + ?Sized>(
 impl<W: Write + Unpin + Send> Drop for Builder<W> {
     fn drop(&mut self) {
         // TODO: proper async cancellation
-        if !self.finished
-            && let Some(cancellation) = self.cancellation.take()
-        {
-            cancellation.send(self.obj.take().unwrap()).ok();
+        #[allow(clippy::collapsible_if)]
+        if !self.finished {
+            if let Some(cancellation) = self.cancellation.take() {
+                cancellation.send(self.obj.take().unwrap()).ok();
+            }
         }
     }
 }
