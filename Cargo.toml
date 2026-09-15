@@ -15,8 +15,7 @@ documentation = "https://docs.rs/rustfs-tokio-tar"
 license = "MIT OR Apache-2.0"
 keywords = ["tar", "tarfile", "encoding"]
 readme = "README.md"
-edition = "2021"
-rust-version = "1.83.0"
+edition = "2024"
 exclude = ["/scripts/"]
 
 description = """

@@ -17,7 +17,7 @@ use std::{
 use tokio::io;
 use zerocopy::{FromBytes, Immutable, IntoBytes, KnownLayout, Unaligned};
 
-use crate::{other, EntryType};
+use crate::{EntryType, other};
 
 /// A deterministic, arbitrary, non-zero timestamp that use used as `mtime`
 /// of headers when [`HeaderMode::Deterministic`] is used.
@@ -1543,10 +1543,10 @@ fn copy_path_into_inner(
         if needs_slash {
             copy(&mut slot, b"/")?;
         }
-        if bytes.contains(&b'/') {
-            if let Component::Normal(..) = component {
-                return Err(other("path component in archive cannot contain `/`"));
-            }
+        if bytes.contains(&b'/')
+            && let Component::Normal(..) = component
+        {
+            return Err(other("path component in archive cannot contain `/`"));
         }
         copy(&mut slot, &bytes)?;
         if &*bytes != b"/" {

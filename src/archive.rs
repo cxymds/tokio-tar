@@ -16,9 +16,10 @@ use tokio::{
 use tokio_stream::*;
 
 use crate::{
+    Entry, GnuExtSparseHeader, GnuSparseHeader, Header,
     entry::{EntryFields, EntryIo, PaxOwnerName},
     error::TarError,
-    other, Entry, GnuExtSparseHeader, GnuSparseHeader, Header,
+    other,
 };
 use crate::{header::BLOCK_SIZE, pax::pax_extensions};
 
@@ -1202,10 +1203,10 @@ impl<R: Read + Unpin> SparseState<R> {
                     Ok(block) => block,
                     Err(err) => return Poll::Ready(Err(err)),
                 };
-                if let Some((offset, length)) = block {
-                    if let Err(err) = self.add_block(offset, length) {
-                        return Poll::Ready(Err(err));
-                    }
+                if let Some((offset, length)) = block
+                    && let Err(err) = self.add_block(offset, length)
+                {
+                    return Poll::Ready(Err(err));
                 }
             }
             self.needs_continuation = self.continuation.is_extended();
@@ -1234,7 +1235,7 @@ impl<R: Read + Unpin> SparseState<R> {
     }
 
     fn add_block(&mut self, offset: u64, length: u64) -> io::Result<()> {
-        if length != 0 && (self.entry.size - self.remaining) % BLOCK_SIZE != 0 {
+        if length != 0 && !(self.entry.size - self.remaining).is_multiple_of(BLOCK_SIZE) {
             return Err(other(
                 "previous block in sparse file was not \
                  aligned to 512-byte boundary",

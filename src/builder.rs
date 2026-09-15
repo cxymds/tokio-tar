@@ -1,6 +1,7 @@
 use crate::{
-    header::{path2bytes, HeaderMode},
-    other, EntryType, Header,
+    EntryType, Header,
+    header::{HeaderMode, path2bytes},
+    other,
 };
 use std::{fs::Metadata, path::Path, str};
 use tokio::{
@@ -716,10 +717,10 @@ async fn append_dir_all<Dst: Write + Unpin + ?Sized>(
 impl<W: Write + Unpin + Send> Drop for Builder<W> {
     fn drop(&mut self) {
         // TODO: proper async cancellation
-        if !self.finished {
-            if let Some(cancellation) = self.cancellation.take() {
-                cancellation.send(self.obj.take().unwrap()).ok();
-            }
+        if !self.finished
+            && let Some(cancellation) = self.cancellation.take()
+        {
+            cancellation.send(self.obj.take().unwrap()).ok();
         }
     }
 }

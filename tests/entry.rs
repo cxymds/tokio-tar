@@ -574,9 +574,11 @@ async fn symlink_dir_collision_does_not_chmod_external_dir() {
 
     // Also ensure that we still have a symlink and that it didn't turn into a
     // directory.
-    assert!(t!(extract.join("foo").symlink_metadata())
-        .file_type()
-        .is_symlink());
+    assert!(
+        t!(extract.join("foo").symlink_metadata())
+            .file_type()
+            .is_symlink()
+    );
 
     // Finally, ensure that the target directory is still 0700.
     let after = t!(fs::metadata(&target).await).permissions().mode() & 0o7777;

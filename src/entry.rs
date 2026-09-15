@@ -1,6 +1,6 @@
 use crate::fs::normalize;
 use crate::{
-    error::TarError, header::bytes2path, other, pax::pax_extensions, Archive, Header, PaxExtensions,
+    Archive, Header, PaxExtensions, error::TarError, header::bytes2path, other, pax::pax_extensions,
 };
 use rustc_hash::FxHashSet;
 use std::{
@@ -21,7 +21,7 @@ use std::{
 };
 use tokio::{
     fs,
-    fs::{remove_file, OpenOptions},
+    fs::{OpenOptions, remove_file},
     io::{self, AsyncRead as Read, AsyncReadExt, AsyncSeekExt, AsyncWriteExt},
 };
 
@@ -56,7 +56,7 @@ fn set_symlink_file_times(dst: &Path, mtime: SystemTime) -> io::Result<()> {
 
 #[cfg(all(unix, not(any(target_os = "redox", target_os = "emscripten"))))]
 fn set_symlink_file_times(dst: &Path, mtime: SystemTime) -> io::Result<()> {
-    use rustix::fs::{utimensat, AtFlags, Timespec, Timestamps, CWD};
+    use rustix::fs::{AtFlags, CWD, Timespec, Timestamps, utimensat};
 
     let duration = mtime
         .duration_since(UNIX_EPOCH)
@@ -762,10 +762,10 @@ impl<R: Read + Unpin> EntryFields<R> {
 
         if kind.is_dir() {
             self.unpack_dir(dst).await?;
-            if self.preserve_permissions {
-                if let Ok(mode) = self.header.mode() {
-                    set_perms(dst, None, mode).await?;
-                }
+            if self.preserve_permissions
+                && let Ok(mode) = self.header.mode()
+            {
+                set_perms(dst, None, mode).await?;
             }
             return Ok(Unpacked::Other);
         } else if kind.is_hard_link() || kind.is_symlink() {
@@ -876,12 +876,12 @@ impl<R: Read + Unpin> EntryFields<R> {
                         }
                     }
                 }?;
-                if self.preserve_mtime {
-                    if let Some(mtime) = get_mtime(&self.header)? {
-                        set_symlink_file_times(dst, mtime).map_err(|e| {
-                            TarError::new(format!("failed to set mtime for `{}`", dst.display()), e)
-                        })?;
-                    }
+                if self.preserve_mtime
+                    && let Some(mtime) = get_mtime(&self.header)?
+                {
+                    set_symlink_file_times(dst, mtime).map_err(|e| {
+                        TarError::new(format!("failed to set mtime for `{}`", dst.display()), e)
+                    })?;
                 }
             };
             return Ok(Unpacked::Other);
@@ -917,10 +917,10 @@ impl<R: Read + Unpin> EntryFields<R> {
         // Only applies to old headers.
         if self.header.as_ustar().is_none() && self.path_bytes()?.ends_with(b"/") {
             self.unpack_dir(dst).await?;
-            if self.preserve_permissions {
-                if let Ok(mode) = self.header.mode() {
-                    set_perms(dst, None, mode).await?;
-                }
+            if self.preserve_permissions
+                && let Ok(mode) = self.header.mode()
+            {
+                set_perms(dst, None, mode).await?;
             }
             return Ok(Unpacked::Other);
         }
@@ -997,19 +997,19 @@ impl<R: Read + Unpin> EntryFields<R> {
             )
         })?;
 
-        if self.preserve_mtime {
-            if let Some(mtime) = get_mtime(&self.header)? {
-                let file = f.into_std().await;
-                set_file_times(&file, mtime).map_err(|e| {
-                    TarError::new(format!("failed to set mtime for `{}`", dst.display()), e)
-                })?;
-                f = fs::File::from_std(file);
-            }
+        if self.preserve_mtime
+            && let Some(mtime) = get_mtime(&self.header)?
+        {
+            let file = f.into_std().await;
+            set_file_times(&file, mtime).map_err(|e| {
+                TarError::new(format!("failed to set mtime for `{}`", dst.display()), e)
+            })?;
+            f = fs::File::from_std(file);
         }
-        if self.preserve_permissions {
-            if let Ok(mode) = self.header.mode() {
-                set_perms(dst, Some(&mut f), mode).await?;
-            }
+        if self.preserve_permissions
+            && let Ok(mode) = self.header.mode()
+        {
+            set_perms(dst, Some(&mut f), mode).await?;
         }
         if self.unpack_xattrs {
             set_xattrs(self, dst).await?;
@@ -1178,7 +1178,7 @@ impl<R: Read + Unpin> Read for EntryFields<R> {
                 this.read_state = this.data.pop_front();
             }
 
-            if let Some(ref mut io) = &mut this.read_state {
+            if let Some(io) = &mut this.read_state {
                 let expected_data = match io {
                     EntryIo::Data(reader) => reader.limit() > 0,
                     EntryIo::Pad(_) => false,
@@ -1223,8 +1223,8 @@ impl<R: Read + Unpin> Read for EntryIo<R> {
         into: &mut io::ReadBuf<'_>,
     ) -> Poll<io::Result<()>> {
         match self.get_mut() {
-            EntryIo::Pad(ref mut io) => Pin::new(io).poll_read(cx, into),
-            EntryIo::Data(ref mut io) => Pin::new(io).poll_read(cx, into),
+            EntryIo::Pad(io) => Pin::new(io).poll_read(cx, into),
+            EntryIo::Data(io) => Pin::new(io).poll_read(cx, into),
         }
     }
 }
