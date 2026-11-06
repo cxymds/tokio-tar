@@ -5,8 +5,15 @@ extern crate tempfile;
 extern crate xattr;
 
 use std::{
+    future::Future,
     io::Cursor,
     path::{Path, PathBuf},
+    pin::Pin,
+    sync::{
+        Arc,
+        atomic::{AtomicUsize, Ordering},
+    },
+    task::Poll,
     time::UNIX_EPOCH,
 };
 use tokio::{
@@ -313,18 +320,24 @@ async fn check_dirtree(td: &TempDir) {
     let dir_a = td.path().join("a");
     let dir_b = td.path().join("a/b");
     let file_c = td.path().join("a/c");
-    assert!(fs::metadata(&dir_a)
-        .await
-        .map(|m| m.is_dir())
-        .unwrap_or(false));
-    assert!(fs::metadata(&dir_b)
-        .await
-        .map(|m| m.is_dir())
-        .unwrap_or(false));
-    assert!(fs::metadata(&file_c)
-        .await
-        .map(|m| m.is_file())
-        .unwrap_or(false));
+    assert!(
+        fs::metadata(&dir_a)
+            .await
+            .map(|m| m.is_dir())
+            .unwrap_or(false)
+    );
+    assert!(
+        fs::metadata(&dir_b)
+            .await
+            .map(|m| m.is_dir())
+            .unwrap_or(false)
+    );
+    assert!(
+        fs::metadata(&file_c)
+            .await
+            .map(|m| m.is_file())
+            .unwrap_or(false)
+    );
 }
 
 #[tokio::test]
@@ -490,25 +503,33 @@ async fn writing_directories_recursively() {
     let mut ar = Archive::new(Cursor::new(data));
     t!(ar.unpack(td.path()).await);
     let base_dir = td.path().join("foobar");
-    assert!(fs::metadata(&base_dir)
-        .await
-        .map(|m| m.is_dir())
-        .unwrap_or(false));
+    assert!(
+        fs::metadata(&base_dir)
+            .await
+            .map(|m| m.is_dir())
+            .unwrap_or(false)
+    );
     let file1_path = base_dir.join("file1");
-    assert!(fs::metadata(&file1_path)
-        .await
-        .map(|m| m.is_file())
-        .unwrap_or(false));
+    assert!(
+        fs::metadata(&file1_path)
+            .await
+            .map(|m| m.is_file())
+            .unwrap_or(false)
+    );
     let sub_dir = base_dir.join("sub");
-    assert!(fs::metadata(&sub_dir)
-        .await
-        .map(|m| m.is_dir())
-        .unwrap_or(false));
+    assert!(
+        fs::metadata(&sub_dir)
+            .await
+            .map(|m| m.is_dir())
+            .unwrap_or(false)
+    );
     let file2_path = sub_dir.join("file2");
-    assert!(fs::metadata(&file2_path)
-        .await
-        .map(|m| m.is_file())
-        .unwrap_or(false));
+    assert!(
+        fs::metadata(&file2_path)
+            .await
+            .map(|m| m.is_file())
+            .unwrap_or(false)
+    );
 }
 
 #[tokio::test]
@@ -533,25 +554,33 @@ async fn append_dir_all_blank_dest() {
     let mut ar = Archive::new(Cursor::new(data));
     t!(ar.unpack(td.path()).await);
     let base_dir = td.path();
-    assert!(fs::metadata(&base_dir)
-        .await
-        .map(|m| m.is_dir())
-        .unwrap_or(false));
+    assert!(
+        fs::metadata(&base_dir)
+            .await
+            .map(|m| m.is_dir())
+            .unwrap_or(false)
+    );
     let file1_path = base_dir.join("file1");
-    assert!(fs::metadata(&file1_path)
-        .await
-        .map(|m| m.is_file())
-        .unwrap_or(false));
+    assert!(
+        fs::metadata(&file1_path)
+            .await
+            .map(|m| m.is_file())
+            .unwrap_or(false)
+    );
     let sub_dir = base_dir.join("sub");
-    assert!(fs::metadata(&sub_dir)
-        .await
-        .map(|m| m.is_dir())
-        .unwrap_or(false));
+    assert!(
+        fs::metadata(&sub_dir)
+            .await
+            .map(|m| m.is_dir())
+            .unwrap_or(false)
+    );
     let file2_path = sub_dir.join("file2");
-    assert!(fs::metadata(&file2_path)
-        .await
-        .map(|m| m.is_file())
-        .unwrap_or(false));
+    assert!(
+        fs::metadata(&file2_path)
+            .await
+            .map(|m| m.is_file())
+            .unwrap_or(false)
+    );
 }
 
 #[tokio::test]
@@ -575,10 +604,12 @@ async fn extracting_duplicate_dirs() {
     t!(ar.unpack(td.path()).await);
 
     let some_dir = td.path().join("some_dir");
-    assert!(fs::metadata(&some_dir)
-        .await
-        .map(|m| m.is_dir())
-        .unwrap_or(false));
+    assert!(
+        fs::metadata(&some_dir)
+            .await
+            .map(|m| m.is_dir())
+            .unwrap_or(false)
+    );
 }
 
 #[tokio::test]
@@ -712,18 +743,26 @@ async fn extracting_malicious_tarball() {
     assert!(fs::metadata("/tmp/abs_evil.txt6").await.is_err());
     assert!(fs::metadata("/tmp/rel_evil.txt").await.is_err());
     assert!(fs::metadata("/tmp/rel_evil.txt").await.is_err());
-    assert!(fs::metadata(td.path().join("../tmp/rel_evil.txt"))
-        .await
-        .is_err());
-    assert!(fs::metadata(td.path().join("../rel_evil2.txt"))
-        .await
-        .is_err());
-    assert!(fs::metadata(td.path().join("../rel_evil3.txt"))
-        .await
-        .is_err());
-    assert!(fs::metadata(td.path().join("../rel_evil4.txt"))
-        .await
-        .is_err());
+    assert!(
+        fs::metadata(td.path().join("../tmp/rel_evil.txt"))
+            .await
+            .is_err()
+    );
+    assert!(
+        fs::metadata(td.path().join("../rel_evil2.txt"))
+            .await
+            .is_err()
+    );
+    assert!(
+        fs::metadata(td.path().join("../rel_evil3.txt"))
+            .await
+            .is_err()
+    );
+    assert!(
+        fs::metadata(td.path().join("../rel_evil4.txt"))
+            .await
+            .is_err()
+    );
 
     // The `some` subdirectory should not be created because the only
     // filename that references this has '..'.
@@ -732,46 +771,64 @@ async fn extracting_malicious_tarball() {
     // The `tmp` subdirectory should be created and within this
     // subdirectory, there should be files named `abs_evil.txt` through
     // `abs_evil6.txt`.
-    assert!(fs::metadata(td.path().join("tmp"))
-        .await
-        .map(|m| m.is_dir())
-        .unwrap_or(false));
-    assert!(fs::metadata(td.path().join("tmp/abs_evil.txt"))
-        .await
-        .map(|m| m.is_file())
-        .unwrap_or(false));
-    assert!(fs::metadata(td.path().join("tmp/abs_evil2.txt"))
-        .await
-        .map(|m| m.is_file())
-        .unwrap_or(false));
-    assert!(fs::metadata(td.path().join("tmp/abs_evil3.txt"))
-        .await
-        .map(|m| m.is_file())
-        .unwrap_or(false));
-    assert!(fs::metadata(td.path().join("tmp/abs_evil4.txt"))
-        .await
-        .map(|m| m.is_file())
-        .unwrap_or(false));
-    assert!(fs::metadata(td.path().join("tmp/abs_evil5.txt"))
-        .await
-        .map(|m| m.is_file())
-        .unwrap_or(false));
-    assert!(fs::metadata(td.path().join("tmp/abs_evil6.txt"))
-        .await
-        .map(|m| m.is_file())
-        .unwrap_or(false));
+    assert!(
+        fs::metadata(td.path().join("tmp"))
+            .await
+            .map(|m| m.is_dir())
+            .unwrap_or(false)
+    );
+    assert!(
+        fs::metadata(td.path().join("tmp/abs_evil.txt"))
+            .await
+            .map(|m| m.is_file())
+            .unwrap_or(false)
+    );
+    assert!(
+        fs::metadata(td.path().join("tmp/abs_evil2.txt"))
+            .await
+            .map(|m| m.is_file())
+            .unwrap_or(false)
+    );
+    assert!(
+        fs::metadata(td.path().join("tmp/abs_evil3.txt"))
+            .await
+            .map(|m| m.is_file())
+            .unwrap_or(false)
+    );
+    assert!(
+        fs::metadata(td.path().join("tmp/abs_evil4.txt"))
+            .await
+            .map(|m| m.is_file())
+            .unwrap_or(false)
+    );
+    assert!(
+        fs::metadata(td.path().join("tmp/abs_evil5.txt"))
+            .await
+            .map(|m| m.is_file())
+            .unwrap_or(false)
+    );
+    assert!(
+        fs::metadata(td.path().join("tmp/abs_evil6.txt"))
+            .await
+            .map(|m| m.is_file())
+            .unwrap_or(false)
+    );
 
     // Paths "//tmp/abs_evil2.txt" and "//./tmp/abs_evil5.txt" are not absolute for Windows,
     // hence this test part does not work as expected on this OS.
     if cfg!(not(windows)) {
-        assert!(fs::metadata(td.path().join("tmp/abs_evil2.txt"))
-            .await
-            .map(|m| m.is_file())
-            .unwrap_or(false));
-        assert!(fs::metadata(td.path().join("tmp/abs_evil5.txt"))
-            .await
-            .map(|m| m.is_file())
-            .unwrap_or(false));
+        assert!(
+            fs::metadata(td.path().join("tmp/abs_evil2.txt"))
+                .await
+                .map(|m| m.is_file())
+                .unwrap_or(false)
+        );
+        assert!(
+            fs::metadata(td.path().join("tmp/abs_evil5.txt"))
+                .await
+                .map(|m| m.is_file())
+                .unwrap_or(false)
+        );
     }
 }
 
@@ -1167,6 +1224,244 @@ async fn archive_with_header(header: &Header) -> Vec<u8> {
     t!(builder.into_inner().await)
 }
 
+fn extension_header_only(entry_type: EntryType, size: u64) -> Vec<u8> {
+    let mut header = Header::new_ustar();
+    t!(header.set_path("extension"));
+    header.set_entry_type(entry_type);
+    header.set_size(size);
+    header.set_cksum();
+    header.as_bytes().to_vec()
+}
+
+async fn archive_with_extension(entry_type: EntryType, payload: &[u8]) -> Vec<u8> {
+    let mut builder = Builder::new(Vec::new());
+    let mut header = Header::new_ustar();
+    t!(header.set_path("extension"));
+    header.set_entry_type(entry_type);
+    header.set_size(payload.len() as u64);
+    header.set_cksum();
+    t!(builder.append(&header, payload).await);
+    t!(builder.into_inner().await)
+}
+
+#[tokio::test]
+async fn extension_entry_size_limit_precedes_payload_allocation() {
+    const LIMIT: u64 = 128 * 1024;
+
+    for entry_type in [
+        EntryType::GNULongName,
+        EntryType::GNULongLink,
+        EntryType::XHeader,
+        EntryType::SolarisXHeader,
+        EntryType::XGlobalHeader,
+    ] {
+        let bytes = extension_header_only(entry_type, LIMIT + 1);
+        let mut archive = ArchiveBuilder::new(Cursor::new(bytes))
+            .set_max_extension_entry_size(LIMIT)
+            .build();
+        let err = t!(archive.entries()).next().await.unwrap().unwrap_err();
+
+        assert_eq!(err.kind(), io::ErrorKind::InvalidData);
+        assert_eq!(
+            err.to_string(),
+            "archive extension entry size limit exceeded"
+        );
+    }
+}
+
+#[tokio::test]
+async fn extension_limit_error_fuses_logical_and_raw_streams() {
+    let mut smuggled = Header::new_ustar();
+    t!(smuggled.set_path("smuggled"));
+    smuggled.set_size(0);
+    smuggled.set_cksum();
+    let bytes = archive_with_extension(EntryType::XHeader, smuggled.as_bytes()).await;
+
+    let mut archive = ArchiveBuilder::new(Cursor::new(bytes.clone()))
+        .set_max_extension_entry_size(511)
+        .build();
+    let mut entries = t!(archive.entries());
+    let err = entries.next().await.unwrap().unwrap_err();
+    assert_eq!(
+        err.to_string(),
+        "archive extension entry size limit exceeded"
+    );
+    assert!(entries.next().await.is_none());
+
+    let mut archive = ArchiveBuilder::new(Cursor::new(bytes))
+        .set_max_extension_entry_size(511)
+        .build();
+    let mut entries = t!(archive.entries_raw());
+    let err = entries.next().await.unwrap().unwrap_err();
+    assert_eq!(
+        err.to_string(),
+        "archive extension entry size limit exceeded"
+    );
+    assert!(entries.next().await.is_none());
+}
+
+#[tokio::test]
+async fn dangling_extension_error_fuses_logical_stream() {
+    let mut bytes = archive_with_extension(EntryType::XHeader, b"9 path=a\n").await;
+    bytes.truncate(1024);
+    let mut archive = Archive::new(Cursor::new(bytes));
+    let mut entries = t!(archive.entries());
+
+    let err = entries.next().await.unwrap().unwrap_err();
+    assert_eq!(
+        err.to_string(),
+        "extension entry was not followed by a member"
+    );
+    assert!(entries.next().await.is_none());
+}
+
+#[tokio::test]
+async fn semantic_extension_error_fuses_logical_stream() {
+    let mut builder = Builder::new(Vec::new());
+    let mut extension = Header::new_ustar();
+    t!(extension.set_path("extension"));
+    extension.set_entry_type(EntryType::XHeader);
+    extension.set_size(b"malformed\n".len() as u64);
+    extension.set_cksum();
+    t!(builder.append(&extension, b"malformed\n".as_slice()).await);
+    t!(builder.append(&regular_ustar_header(), io::empty()).await);
+    let mut archive = Archive::new(Cursor::new(t!(builder.into_inner().await)));
+    let mut entries = t!(archive.entries());
+
+    let err = entries.next().await.unwrap().unwrap_err();
+    assert!(err.to_string().contains("malformed pax extension"));
+    assert!(entries.next().await.is_none());
+}
+
+#[tokio::test]
+async fn extension_entry_size_limit_accepts_exact_boundary() {
+    for (entry_type, payload) in [
+        (EntryType::GNULongName, b"long-name\0".as_slice()),
+        (EntryType::GNULongLink, b"long-link\0".as_slice()),
+        (EntryType::XHeader, b"9 path=a\n".as_slice()),
+        (EntryType::SolarisXHeader, b"9 path=a\n".as_slice()),
+        (EntryType::XGlobalHeader, b"17 comment=value\n".as_slice()),
+    ] {
+        let bytes = archive_with_extension(entry_type, payload).await;
+        let mut archive = ArchiveBuilder::new(Cursor::new(bytes))
+            .set_max_extension_entry_size(payload.len() as u64)
+            .build();
+        let entry = t!(t!(archive.entries_raw()).next().await.unwrap());
+
+        assert_eq!(entry.header().entry_type(), entry_type);
+    }
+}
+
+async fn two_global_pax_extensions() -> (Vec<u8>, u64) {
+    let records = [
+        pax_record("comment", b"first"),
+        pax_record("comment", b"second"),
+    ];
+    let total = records.iter().map(|record| record.len() as u64).sum();
+    let mut builder = Builder::new(Vec::new());
+
+    for record in records {
+        let mut header = Header::new_ustar();
+        t!(header.set_path("global-pax"));
+        header.set_entry_type(EntryType::XGlobalHeader);
+        header.set_size(record.len() as u64);
+        header.set_cksum();
+        t!(builder.append(&header, &record[..]).await);
+    }
+
+    (t!(builder.into_inner().await), total)
+}
+
+#[tokio::test]
+async fn total_extension_size_limit_is_cumulative() {
+    let (bytes, total) = two_global_pax_extensions().await;
+    let mut archive = ArchiveBuilder::new(Cursor::new(bytes))
+        .set_max_total_extension_size(total - 1)
+        .build();
+    let mut entries = t!(archive.entries());
+
+    t!(entries.next().await.unwrap());
+    let err = entries.next().await.unwrap().unwrap_err();
+    assert_eq!(err.kind(), io::ErrorKind::InvalidData);
+    assert_eq!(
+        err.to_string(),
+        "archive total extension size limit exceeded"
+    );
+}
+
+#[tokio::test]
+async fn total_extension_size_limit_accepts_exact_boundary() {
+    let (bytes, total) = two_global_pax_extensions().await;
+    let mut archive = ArchiveBuilder::new(Cursor::new(bytes))
+        .set_max_total_extension_size(total)
+        .build();
+    let mut entries = t!(archive.entries_raw());
+
+    for _ in 0..2 {
+        t!(entries.next().await.unwrap());
+    }
+    assert!(entries.next().await.is_none());
+}
+
+async fn two_regular_entries() -> Vec<u8> {
+    let mut builder = Builder::new(Vec::new());
+    for path in ["first", "second"] {
+        let mut header = Header::new_ustar();
+        t!(header.set_path(path));
+        header.set_size(0);
+        header.set_cksum();
+        t!(builder.append(&header, io::empty()).await);
+    }
+    t!(builder.into_inner().await)
+}
+
+#[tokio::test]
+async fn physical_entry_limit_counts_regular_and_extension_entries() {
+    let (mut bytes, _) = two_global_pax_extensions().await;
+    bytes.extend(two_regular_entries().await);
+    let mut archive = ArchiveBuilder::new(Cursor::new(bytes))
+        .set_ignore_zeros(true)
+        .set_max_physical_entries(3)
+        .build();
+    let mut entries = t!(archive.entries_raw());
+
+    for _ in 0..3 {
+        t!(entries.next().await.unwrap());
+    }
+    let err = entries.next().await.unwrap().unwrap_err();
+    assert_eq!(err.kind(), io::ErrorKind::InvalidData);
+    assert_eq!(err.to_string(), "archive physical entry limit exceeded");
+}
+
+#[tokio::test]
+async fn zero_limits_reject_the_first_matching_entry() {
+    let extension = archive_with_extension(EntryType::XGlobalHeader, b"").await;
+    let mut archive = ArchiveBuilder::new(Cursor::new(extension.clone()))
+        .set_max_extension_entry_size(0)
+        .build();
+    let err = t!(archive.entries_raw()).next().await.unwrap().unwrap_err();
+    assert_eq!(
+        err.to_string(),
+        "archive extension entry size limit exceeded"
+    );
+
+    let mut archive = ArchiveBuilder::new(Cursor::new(extension))
+        .set_max_total_extension_size(0)
+        .build();
+    let err = t!(archive.entries_raw()).next().await.unwrap().unwrap_err();
+    assert_eq!(
+        err.to_string(),
+        "archive total extension size limit exceeded"
+    );
+
+    let regular = two_regular_entries().await;
+    let mut archive = ArchiveBuilder::new(Cursor::new(regular))
+        .set_max_physical_entries(0)
+        .build();
+    let err = t!(archive.entries()).next().await.unwrap().unwrap_err();
+    assert_eq!(err.to_string(), "archive physical entry limit exceeded");
+}
+
 async fn local_pax_archive(header: &Header) -> Vec<u8> {
     let mut builder = Builder::new(Vec::new());
     append_local_pax_header(&mut builder).await;
@@ -1206,9 +1501,10 @@ async fn pending_pax_record_at_archive_end_is_rejected() {
         Ok(_) => panic!("expected unterminated PAX state to be rejected"),
         Err(err) => err,
     };
-    assert!(err
-        .to_string()
-        .contains("extension entry was not followed by a member"));
+    assert!(
+        err.to_string()
+            .contains("extension entry was not followed by a member")
+    );
 }
 
 #[tokio::test]
@@ -1224,15 +1520,14 @@ async fn pending_pax_record_does_not_cross_ignored_terminator() {
         Ok(_) => panic!("expected PAX state at a terminator to be rejected"),
         Err(err) => err,
     };
-    assert!(err
-        .to_string()
-        .contains("extension entry was not followed by a member"));
+    assert!(
+        err.to_string()
+            .contains("extension entry was not followed by a member")
+    );
 }
 
 #[tokio::test]
 async fn pax_pending_interrupted() {
-    use std::pin::Pin;
-
     /// A [`AsyncRead`] that returns `Pending` on every other poll.
     struct PendingReader<R> {
         inner: R,
@@ -1264,8 +1559,6 @@ async fn pax_pending_interrupted() {
             cx: &mut std::task::Context<'_>,
             buf: &mut io::ReadBuf<'_>,
         ) -> std::task::Poll<io::Result<()>> {
-            use std::task::Poll;
-
             let (inner, n) = self.project();
 
             let pend = *n % 2 == 0;
@@ -1289,7 +1582,10 @@ async fn pax_pending_interrupted() {
     let path = t!(entry.path());
     let path = path.to_str().unwrap();
 
-    assert_eq!(path, "this_file_name_will_be_one_hundred_and_one_characters_long_once_i_add_some_more_characters_at_the_end");
+    assert_eq!(
+        path,
+        "this_file_name_will_be_one_hundred_and_one_characters_long_once_i_add_some_more_characters_at_the_end"
+    );
 }
 
 #[tokio::test]
@@ -2009,6 +2305,340 @@ async fn sparse_with_trailing() {
     assert_eq!(&s[0x100_000..], "1MB through\n");
 }
 
+const SPARSE_EXT_HEADER_OFFSET: usize = 2560;
+
+struct AlternatingPendingReader {
+    bytes: Vec<u8>,
+    position: Arc<AtomicUsize>,
+    max_read: usize,
+    return_pending: bool,
+}
+
+impl AlternatingPendingReader {
+    fn new(bytes: Vec<u8>, max_read: usize) -> (Self, Arc<AtomicUsize>) {
+        let position = Arc::new(AtomicUsize::new(0));
+        (
+            Self {
+                bytes,
+                position: position.clone(),
+                max_read,
+                return_pending: true,
+            },
+            position,
+        )
+    }
+}
+
+impl AsyncRead for AlternatingPendingReader {
+    fn poll_read(
+        self: Pin<&mut Self>,
+        cx: &mut std::task::Context<'_>,
+        buf: &mut io::ReadBuf<'_>,
+    ) -> Poll<io::Result<()>> {
+        let this = self.get_mut();
+        if this.return_pending {
+            this.return_pending = false;
+            cx.waker().wake_by_ref();
+            return Poll::Pending;
+        }
+        this.return_pending = true;
+
+        let position = this.position.load(Ordering::Relaxed);
+        let amount = this
+            .max_read
+            .min(buf.remaining())
+            .min(this.bytes.len() - position);
+        let end = position + amount;
+        buf.put_slice(&this.bytes[position..end]);
+        this.position.store(end, Ordering::Relaxed);
+        Poll::Ready(Ok(()))
+    }
+}
+
+fn sparse_with_two_continuation_blocks() -> Vec<u8> {
+    let mut bytes = tar!("sparse.tar").to_vec();
+    // `sparse_ext.txt` has four map entries in its GNU header and two in the
+    // continuation block. Move the sixth entry into a second continuation.
+    let moved_start = SPARSE_EXT_HEADER_OFFSET + 24;
+    let moved = bytes[moved_start..moved_start + 24].to_vec();
+    bytes[moved_start..moved_start + 24].fill(0);
+    bytes[SPARSE_EXT_HEADER_OFFSET + 504] = 1;
+
+    let mut continuation = [0_u8; 512];
+    continuation[..24].copy_from_slice(&moved);
+    let insert_at = SPARSE_EXT_HEADER_OFFSET + 512;
+    bytes.splice(insert_at..insert_at, continuation);
+    bytes
+}
+
+fn sparse_with_empty_continuation_tail(empty_blocks: usize) -> Vec<u8> {
+    assert!(empty_blocks > 0);
+    let mut bytes = tar!("sparse.tar").to_vec();
+    bytes[SPARSE_EXT_HEADER_OFFSET + 504] = 1;
+
+    let mut tail = Vec::with_capacity(empty_blocks * 512);
+    for index in 0..empty_blocks {
+        let mut continuation = [0_u8; 512];
+        if index + 1 < empty_blocks {
+            continuation[504] = 1;
+        }
+        tail.extend_from_slice(&continuation);
+    }
+
+    let insert_at = SPARSE_EXT_HEADER_OFFSET + 512;
+    bytes.splice(insert_at..insert_at, tail);
+    bytes
+}
+
+#[tokio::test]
+async fn sparse_parser_resumes_alternating_pending_reads() {
+    let (reader, _) = AlternatingPendingReader::new(tar!("sparse.tar").to_vec(), 7);
+    let mut archive = ArchiveBuilder::new(reader)
+        .set_max_sparse_entries(6)
+        .set_max_sparse_continuation_blocks(1)
+        .build();
+    let mut entries = t!(archive.entries());
+
+    for expected in [
+        b"sparse_begin.txt".as_slice(),
+        b"sparse_end.txt".as_slice(),
+        b"sparse_ext.txt".as_slice(),
+        b"sparse.txt".as_slice(),
+    ] {
+        let entry = t!(entries.next().await.unwrap());
+        assert_eq!(&*entry.header().path_bytes(), expected);
+    }
+    assert!(entries.next().await.is_none());
+}
+
+#[tokio::test]
+async fn raw_sparse_entries_retain_their_stored_payload() {
+    let mut archive = ArchiveBuilder::new(Cursor::new(tar!("sparse.tar")))
+        .set_max_sparse_entries(0)
+        .set_max_sparse_continuation_blocks(0)
+        .build();
+    let mut entries = t!(archive.entries_raw());
+    let mut entry = t!(entries.next().await.unwrap());
+    let mut payload = Vec::new();
+
+    t!(entry.read_to_end(&mut payload).await);
+    assert_eq!(payload.len(), 512);
+    assert_eq!(&payload[..5], b"test\n");
+    assert!(payload[5..].iter().all(|byte| *byte == 0));
+
+    t!(entries.next().await.unwrap());
+    let extended = t!(entries.next().await.unwrap());
+    assert_eq!(&*extended.header().path_bytes(), b"sparse_ext.txt");
+}
+
+#[tokio::test]
+async fn sparse_map_limit_survives_alternating_pending_reads() {
+    let (reader, position) =
+        AlternatingPendingReader::new(sparse_with_two_continuation_blocks(), 7);
+    let mut archive = ArchiveBuilder::new(reader)
+        .set_max_sparse_entries(5)
+        .set_max_sparse_continuation_blocks(2)
+        .build();
+    let mut entries = t!(archive.entries());
+
+    t!(entries.next().await.unwrap());
+    t!(entries.next().await.unwrap());
+    let err = entries.next().await.unwrap().unwrap_err();
+    assert_eq!(err.to_string(), "archive sparse entry limit exceeded");
+    assert_eq!(
+        position.load(Ordering::Relaxed),
+        SPARSE_EXT_HEADER_OFFSET + 2 * 512
+    );
+    assert!(entries.next().await.is_none());
+}
+
+#[tokio::test]
+async fn sparse_continuation_limit_survives_alternating_pending_reads() {
+    let (reader, position) =
+        AlternatingPendingReader::new(sparse_with_empty_continuation_tail(2), 7);
+    let mut archive = ArchiveBuilder::new(reader)
+        .set_max_sparse_entries(6)
+        .set_max_sparse_continuation_blocks(2)
+        .build();
+    let mut entries = t!(archive.entries());
+
+    t!(entries.next().await.unwrap());
+    t!(entries.next().await.unwrap());
+    let err = entries.next().await.unwrap().unwrap_err();
+    assert_eq!(
+        err.to_string(),
+        "archive sparse continuation block limit exceeded"
+    );
+    assert_eq!(
+        position.load(Ordering::Relaxed),
+        SPARSE_EXT_HEADER_OFFSET + 2 * 512
+    );
+    assert!(entries.next().await.is_none());
+}
+
+#[tokio::test]
+async fn sparse_parser_survives_cancelled_next_future() {
+    let (reader, position) = AlternatingPendingReader::new(tar!("sparse.tar").to_vec(), 7);
+    let mut archive = ArchiveBuilder::new(reader)
+        .set_max_sparse_entries(6)
+        .set_max_sparse_continuation_blocks(1)
+        .build();
+    let mut entries = t!(archive.entries());
+
+    t!(entries.next().await.unwrap());
+    t!(entries.next().await.unwrap());
+
+    let mut next = Box::pin(entries.next());
+    loop {
+        let outcome = std::future::poll_fn(|cx| Poll::Ready(next.as_mut().poll(cx))).await;
+        match outcome {
+            Poll::Pending
+                if position.load(Ordering::Relaxed) > SPARSE_EXT_HEADER_OFFSET
+                    && position.load(Ordering::Relaxed) < SPARSE_EXT_HEADER_OFFSET + 512 =>
+            {
+                break;
+            }
+            Poll::Pending => {}
+            Poll::Ready(_) => panic!("sparse entry completed before cancellation point"),
+        }
+    }
+    drop(next);
+
+    let entry = t!(entries.next().await.unwrap());
+    assert_eq!(&*entry.header().path_bytes(), b"sparse_ext.txt");
+    assert_eq!(entry.raw_file_position(), 3072);
+}
+
+#[tokio::test]
+async fn sparse_entry_limit_accepts_exact_continuation_boundary() {
+    let bytes = sparse_with_two_continuation_blocks();
+    let mut archive = ArchiveBuilder::new(Cursor::new(bytes))
+        .set_max_sparse_entries(6)
+        .build();
+    let mut entries = t!(archive.entries());
+
+    t!(entries.next().await.unwrap());
+    t!(entries.next().await.unwrap());
+    let entry = t!(entries.next().await.unwrap());
+    assert_eq!(&*entry.header().path_bytes(), b"sparse_ext.txt");
+    assert_eq!(entry.raw_file_position(), 3584);
+}
+
+#[tokio::test]
+async fn zero_sparse_limits_reject_logical_sparse_entries() {
+    let mut archive = ArchiveBuilder::new(Cursor::new(tar!("sparse.tar")))
+        .set_max_sparse_entries(0)
+        .build();
+    let mut entries = t!(archive.entries());
+    let err = entries.next().await.unwrap().unwrap_err();
+    assert_eq!(err.to_string(), "archive sparse entry limit exceeded");
+    assert!(entries.next().await.is_none());
+
+    let mut archive = ArchiveBuilder::new(Cursor::new(tar!("sparse.tar")))
+        .set_max_sparse_continuation_blocks(0)
+        .build();
+    let mut entries = t!(archive.entries());
+    t!(entries.next().await.unwrap());
+    t!(entries.next().await.unwrap());
+    let err = entries.next().await.unwrap().unwrap_err();
+    assert_eq!(
+        err.to_string(),
+        "archive sparse continuation block limit exceeded"
+    );
+    assert!(entries.next().await.is_none());
+}
+
+#[tokio::test]
+async fn sparse_entry_limit_counts_across_continuation_blocks() {
+    let bytes = sparse_with_two_continuation_blocks();
+    let mut archive = ArchiveBuilder::new(Cursor::new(bytes))
+        .set_max_sparse_entries(5)
+        .build();
+    let mut entries = t!(archive.entries());
+
+    t!(entries.next().await.unwrap());
+    t!(entries.next().await.unwrap());
+    let err = entries.next().await.unwrap().unwrap_err();
+    assert_eq!(err.kind(), io::ErrorKind::InvalidData);
+    assert_eq!(err.to_string(), "archive sparse entry limit exceeded");
+}
+
+#[tokio::test]
+async fn sparse_continuation_block_limit_accepts_exact_empty_chain() {
+    let bytes = sparse_with_empty_continuation_tail(2);
+    let mut archive = ArchiveBuilder::new(Cursor::new(bytes))
+        .set_max_sparse_entries(6)
+        .set_max_sparse_continuation_blocks(3)
+        .build();
+    let mut entries = t!(archive.entries());
+
+    t!(entries.next().await.unwrap());
+    t!(entries.next().await.unwrap());
+    let entry = t!(entries.next().await.unwrap());
+    assert_eq!(&*entry.header().path_bytes(), b"sparse_ext.txt");
+    assert_eq!(entry.raw_file_position(), 4096);
+}
+
+#[tokio::test]
+async fn sparse_continuation_block_limit_counts_empty_blocks() {
+    let bytes = sparse_with_empty_continuation_tail(2);
+    let mut archive = ArchiveBuilder::new(Cursor::new(bytes))
+        .set_max_sparse_entries(6)
+        .set_max_sparse_continuation_blocks(2)
+        .build();
+    let mut entries = t!(archive.entries());
+
+    t!(entries.next().await.unwrap());
+    t!(entries.next().await.unwrap());
+    let err = entries.next().await.unwrap().unwrap_err();
+    assert_eq!(err.kind(), io::ErrorKind::InvalidData);
+    assert_eq!(
+        err.to_string(),
+        "archive sparse continuation block limit exceeded"
+    );
+}
+
+fn sparse_with_missing_second_continuation() -> Vec<u8> {
+    let end = SPARSE_EXT_HEADER_OFFSET + 512;
+    let mut bytes = tar!("sparse.tar")[..end].to_vec();
+    bytes[SPARSE_EXT_HEADER_OFFSET + 504] = 1;
+    bytes
+}
+
+#[tokio::test]
+async fn sparse_continuation_truncation_wins_within_limit() {
+    let bytes = sparse_with_missing_second_continuation();
+    let mut archive = ArchiveBuilder::new(Cursor::new(bytes))
+        .set_max_sparse_entries(6)
+        .set_max_sparse_continuation_blocks(2)
+        .build();
+    let mut entries = t!(archive.entries());
+
+    t!(entries.next().await.unwrap());
+    t!(entries.next().await.unwrap());
+    let err = entries.next().await.unwrap().unwrap_err();
+    assert_eq!(err.to_string(), "failed to read extension");
+}
+
+#[tokio::test]
+async fn sparse_continuation_limit_precedes_out_of_budget_read() {
+    let bytes = sparse_with_missing_second_continuation();
+    let mut archive = ArchiveBuilder::new(Cursor::new(bytes))
+        .set_max_sparse_entries(6)
+        .set_max_sparse_continuation_blocks(1)
+        .build();
+    let mut entries = t!(archive.entries());
+
+    t!(entries.next().await.unwrap());
+    t!(entries.next().await.unwrap());
+    let err = entries.next().await.unwrap().unwrap_err();
+    assert_eq!(err.kind(), io::ErrorKind::InvalidData);
+    assert_eq!(
+        err.to_string(),
+        "archive sparse continuation block limit exceeded"
+    );
+}
+
 #[tokio::test]
 async fn sparse_continuation_partial_record_is_rejected() {
     // `sparse_ext.txt` begins an extended sparse header at offset 2560. Its
@@ -2016,14 +2646,36 @@ async fn sparse_continuation_partial_record_is_rejected() {
     // chunk contain either an offset or a length without its paired field.
     for field_offset in [0, 12] {
         let mut bytes = tar!("sparse.tar").to_vec();
-        bytes[2560 + 2 * 24 + field_offset] = b'1';
-        let mut ar = Archive::new(&bytes[..]);
+        bytes[SPARSE_EXT_HEADER_OFFSET + 2 * 24 + field_offset] = b'1';
+        let mut ar = ArchiveBuilder::new(&bytes[..])
+            .set_max_sparse_entries(6)
+            .build();
         let mut entries = t!(ar.entries());
 
         assert!(entries.next().await.unwrap().is_ok());
         assert!(entries.next().await.unwrap().is_ok());
-        assert!(matches!(entries.next().await, Some(Err(_))));
+        let err = entries.next().await.unwrap().unwrap_err();
+        let expected = if field_offset == 0 {
+            "when getting length from sparse header"
+        } else {
+            "when getting offset from sparse header"
+        };
+        assert!(err.to_string().contains(expected), "bad error: {err}");
     }
+}
+
+#[tokio::test]
+async fn sparse_entry_limit_preserves_truncated_continuation_error() {
+    let bytes = &tar!("sparse.tar")[..SPARSE_EXT_HEADER_OFFSET];
+    let mut archive = ArchiveBuilder::new(Cursor::new(bytes))
+        .set_max_sparse_entries(6)
+        .build();
+    let mut entries = t!(archive.entries());
+
+    t!(entries.next().await.unwrap());
+    t!(entries.next().await.unwrap());
+    let err = entries.next().await.unwrap().unwrap_err();
+    assert_eq!(err.to_string(), "failed to read extension");
 }
 
 #[tokio::test]
