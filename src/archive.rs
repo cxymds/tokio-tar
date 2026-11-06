@@ -970,7 +970,7 @@ fn poll_parse_sparse_header<R: Read + Unpin>(
             let off = block.offset()?;
             let len = block.length()?;
 
-            if len != 0 && (size - remaining) % BLOCK_SIZE != 0 {
+            if len != 0 && !(size - remaining).is_multiple_of(BLOCK_SIZE) {
                 return Err(other(
                     "previous block in sparse file was not \
                      aligned to 512-byte boundary",
